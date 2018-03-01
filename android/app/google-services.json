@@ -1,0 +1,45 @@
+{
+  "project_info": {
+    "project_number": "272038238137",
+    "firebase_url": "https://chatty-5fcd2.firebaseio.com",
+    "project_id": "chatty-5fcd2",
+    "storage_bucket": "chatty-5fcd2.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:272038238137:android:0a68e4e7ffc1e548",
+        "android_client_info": {
+          "package_name": "com.d4vinci.chatty"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "272038238137-37i340lnm5j787dvlo23dhcv1afv7o3c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtS2H57pV9jDFtcpCGkH2UJHYi_y93pVw"
+        },
+        {
+          "current_key": "AIzaSyDYhlABnr4LC5kP36FCtV5tP1-636fh4R0"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
