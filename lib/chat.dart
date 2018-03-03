@@ -1,47 +1,93 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fluro/fluro.dart';
 import 'package:flutter/material.dart';
-import 'package:redux/services/fir_auth.dart';
+import 'package:redux/main.dart';
 import 'package:redux/services/fir_chat.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:google_sign_in/widgets.dart';
 
 class Chat extends StatelessWidget {
+  final String userUid;
+  Chat(this.userUid);
   @override
   Widget build(BuildContext context) {
-    return new FutureBuilder<Stream<List<DocumentSnapshot>>>(
-      future: FirChat.instance.getUsers(),
-      builder: (_, contactsSnap) {
-        return new StreamBuilder<List<DocumentSnapshot>>(
-          stream: contactsSnap.data,
-          builder: (context, snap) {
-            final List<DocumentSnapshot> docs =
-                snap.data ?? <DocumentSnapshot>[];
-            if (docs.isEmpty)
-              return const Center(
-                child: const Text('No contacts'),
-              );
-            return new Container(
-              child: new ListView.builder(
-                itemCount: docs.length,
-                itemBuilder: (context, i) {
-                  final String contactUid = docs[i].data['userUid'];
-                  return new ListTile(
-                    title: new Text(contactUid),
-                    onTap: () async {
-                      if ((await FirebaseAuth.instance.currentUser())
-                          .isAnonymous) {
-                        FirAuth.instance.signInWithGoogle();
-                      } else {
-                        Navigator.of(context).push(
-                            new MaterialPageRoute<Null>(builder: (context) {
-                          return new PrivateChat(contactUid);
-                        }));
-                      }
-                    },
-                  );
-                },
+    return new StreamBuilder<List<DocumentSnapshot>>(
+      stream: FirChat.instance.getUsers(userUid),
+      builder: (context, snap) {
+        List<DocumentSnapshot> docs = snap.data ?? <DocumentSnapshot>[];
+        print(snap.toString());
+        return new ListView.builder(
+          itemCount: docs.length,
+          itemBuilder: (context, i) {
+            final String contactUid = docs[i]?.data['userUid'];
+            final String name = docs[i]?.data['name'] ?? '';
+            final String profilePic = docs[i]?.data['profilePic'] ?? ' ';
+            return new ListTile(
+              leading: new CircleAvatar(
+                child: profilePic == ''
+                    ? new Text(
+                        name[0],
+                      )
+                    : new Material(
+                        type: MaterialType.circle,
+                        child: new CachedNetworkImage(
+                          imageUrl: profilePic,
+                          placeholder: new CircularProgressIndicator(),
+                          errorWidget: new Icon(Icons.error),
+                        ),
+                        color: Colors.white,
+                      ),
               ),
+              title: new Text(name),
+              onTap: () {
+                defineRoutes(router);
+                router.navigateTo(context, "/contactsChat/$userUid/$contactUid",
+                    transition: TransitionType.native);
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class RecentChats extends StatelessWidget {
+  final String userUid;
+  RecentChats(this.userUid);
+  @override
+  Widget build(BuildContext context) {
+    return new StreamBuilder<List<DocumentSnapshot>>(
+      stream: FirChat.instance.getRecentChats(userUid),
+      builder: (context, snaps) {
+        final List<DocumentSnapshot> recentChats = snaps.data ?? [];
+        if (recentChats.isEmpty)
+          return new Center(
+            child: new Text('No conversations yet!'),
+          );
+        return new ListView.builder(
+          itemCount: recentChats.length,
+          itemBuilder: (context, i) {
+            final String author = recentChats[i].data['authorUid'];
+            final String contact = recentChats[i].documentID;
+            final String text = recentChats[i].data['text'];
+            final String photo = recentChats[i].data['photoUrl'];
+            return new ListTile(
+              title: new Text(contact),
+              subtitle: new Text(
+                  '${author==contact?'':'You: '}${photo==''?text:'A photo was sent'}'),
+              leading: new CircleAvatar(
+                child: new Text(contact[0]),
+              ),
+              onTap: () {
+                defineRoutes(router);
+                router.navigateTo(context, "/contactsChat/$userUid/$contact",
+                    transition: TransitionType.native);
+              },
             );
           },
         );
@@ -52,8 +98,8 @@ class Chat extends StatelessWidget {
 
 class PrivateChat extends StatelessWidget {
   final TextEditingController _textController = new TextEditingController();
-
-  PrivateChat(this.contactUid);
+  PrivateChat(this.contactUid, this.userUid);
+  final String userUid;
   final String contactUid;
   @override
   Widget build(BuildContext context) {
@@ -61,75 +107,90 @@ class PrivateChat extends StatelessWidget {
       appBar: new AppBar(
         title: new Text(contactUid),
       ),
-      body: new FutureBuilder<Stream<List<DocumentSnapshot>>>(
-        future: FirChat.instance.getPrivateMessagesWith(contactUid),
-        builder: (_, observableSnap) {
-          if (observableSnap?.data != null) {
-            return new StreamBuilder<List<DocumentSnapshot>>(
-              stream: observableSnap.data,
-              builder: (_, snap) {
-                final List<DocumentSnapshot> docs =
-                    snap.data?.reversed?.toList() ?? [];
-                final ScrollController _controller = new ScrollController(
-                  keepScrollOffset: true,
-                  initialScrollOffset: 0.0,
-                );
-                return new Column(
-                  children: <Widget>[
-                    new Expanded(
-                      child: new ListView.builder(
-                        reverse: true,
-                        itemCount: docs.length,
-                        controller: _controller,
-                        itemBuilder: (_, i) {
-                          final String seender = docs[i].data['authorUid'];
-                          final String text = docs[i].data['text'];
-                          return new ListTile(
-                            leading: new CircleAvatar(
-                              child: new Text(seender[0]),
-                            ),
-                            title: new Text(text),
-                          );
+      body: new StreamBuilder<List<DocumentSnapshot>>(
+        stream: FirChat.instance.getPrivateMessagesWith(contactUid, userUid),
+        builder: (_, snap) {
+          final List<DocumentSnapshot> docs =
+              snap.data?.reversed?.toList() ?? [];
+          final ScrollController _controller = new ScrollController(
+            keepScrollOffset: true,
+            initialScrollOffset: 0.0,
+          );
+          return new Column(
+            children: <Widget>[
+              new Expanded(
+                child: new ListView.builder(
+                  reverse: true,
+                  itemCount: docs.length,
+                  controller: _controller,
+                  itemBuilder: (_, i) {
+                    final String sender = docs[i].data['authorUid'];
+                    final String text = docs[i].data['text'];
+                    final String photo = docs[i].data['photoUrl'];
+                    return new Column(
+                      children: <Widget>[
+                        new ListTile(
+                          leading: new CircleAvatar(
+                            child: new Text(sender[0]),
+                          ),
+                          title: photo == ''
+                              ? new Text(text)
+                              : new Padding(
+                                  padding: const EdgeInsets.all(24.0),
+                                  child: new CachedNetworkImage(
+                                    imageUrl: photo,
+                                    placeholder: new Center(
+                                        child: new CircularProgressIndicator()),
+                                    errorWidget: new Icon(Icons.error),
+                                  ),
+                                ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              new Row(
+                children: <Widget>[
+                  new IconButton(
+                    icon: new Icon(Icons.image),
+                    color: Colors.blue,
+                    onPressed: () async {
+                      File file = await ImagePicker.pickImage(
+                          source: ImageSource.askUser);
+
+                      FirChat.instance.sendPhoto(contactUid, file);
+                    },
+                  ),
+                  new Flexible(
+                    flex: 1,
+                    child: new Padding(
+                      padding: const EdgeInsets.all(4.0),
+                      child: new TextField(
+                        controller: _textController,
+                        decoration:
+                            const InputDecoration(hintText: 'Enter a message'),
+                        onSubmitted: (String text) {
+                          _textController.text = '';
+                          FirChat.instance
+                              .sendMessageToContact(contactUid, text, '');
                         },
                       ),
                     ),
-                    new Row(
-                      children: <Widget>[
-                        new Flexible(
-                          flex: 1,
-                          child: new Padding(
-                            padding: const EdgeInsets.all(4.0),
-                            child: new TextField(
-                              controller: _textController,
-                              decoration: const InputDecoration(
-                                  hintText: 'Enter a message'),
-                              onSubmitted: (String text) {
-                                _textController.text = '';
-                                FirChat.instance
-                                    .sendMessageToContact(contactUid, text, '');
-                              },
-                            ),
-                          ),
-                        ),
-                        new IconButton(
-                          icon: new Icon(Icons.send),
-                          color: Theme.of(context).primaryColor,
-                          onPressed: () {
-                            FirChat.instance.sendMessageToContact(
-                                contactUid, _textController.text, '');
-                            _textController.text = '';
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                );
-              },
-            );
-          } else
-            return new Center(
-              child: new Text('Loading...'),
-            );
+                  ),
+                  new IconButton(
+                    icon: new Icon(Icons.send),
+                    color: Theme.of(context).primaryColor,
+                    onPressed: () {
+                      FirChat.instance.sendMessageToContact(
+                          contactUid, _textController.text, '');
+                      _textController.text = '';
+                    },
+                  ),
+                ],
+              ),
+            ],
+          );
         },
       ),
     );

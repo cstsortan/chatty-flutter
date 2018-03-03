@@ -6,7 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 FirebaseAuth _auth = FirebaseAuth.instance;
 Firestore _db = Firestore.instance;
-final GoogleSignIn _gSignIn = new GoogleSignIn();
+final GoogleSignIn _googleSignIn = new GoogleSignIn();
 
 class FirAuth {
   static final FirAuth instance = new FirAuth._internal();
@@ -20,57 +20,51 @@ class FirAuth {
 
   FirAuth._internal();
 
-  Future<FirebaseUser> login() async {
-    FirebaseUser currentUser = await _auth.currentUser();
-    if (currentUser == null) {
-      FirebaseUser user = await _auth.signInAnonymously();
-      return _db.collection('users').document(user.uid).setData({
-        'userUid': user.uid,
-        'isAnonymous': true,
-        'provider': user.providerId,
-      }, SetOptions.merge);
-    } else return currentUser;
-  }
-
-  // Future<Null> register() async {
-  //   final FirebaseUser firebaseUser = await _auth.createUserWithEmailAndPassword(
-  //     email: info.email,
-  //     password: info.password,
-  //   );
-
-  //   final Map<String, dynamic> json = serializers.serializeWith(SignUpInfo.serializer, info);
-  //   // TODO: Maybe a better way?
-  //   // No passwords on firestore.
-  //   json.remove('password');
-  //   return usersRef.document(firebaseUser.uid).setData(json, SetOptions.merge);
-  // }
-
-  Future<Null> logout() async {
-    await _auth.signOut();
-    final googleSignout = _gSignIn.signOut();
-  }
-
   Future<FirebaseUser> signInWithGoogle() async {
-    GoogleSignInAccount googleUser = await _gSignIn.signIn();
-    GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-    FirebaseUser user;
-    try {
-      user = await _auth.linkWithGoogleCredential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-    } catch(e) {
-      user = await _auth.linkWithGoogleCredential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+    FirebaseUser firebaseUser = await _auth.currentUser();
+    if(firebaseUser!=null) return firebaseUser;
+    // Attempt to get the currently authenticated user
+    GoogleSignInAccount currentUser = _googleSignIn.currentUser;
+    if (currentUser == null) {
+      // Attempt to sign in without user interaction
+      currentUser = await _googleSignIn.signInSilently();
     }
+    if (currentUser == null) {
+      // Force the user to interactively sign in
+      currentUser = await _googleSignIn.signIn();
+    }
+
+    final GoogleSignInAuthentication auth = await currentUser.authentication;
+
+    // Authenticate with firebase
+    final FirebaseUser user = await _auth.signInWithGoogle(
+      idToken: auth.idToken,
+      accessToken: auth.accessToken,
+    );
+
+    pushUserInfo(user);
+
+    assert(user != null);
+    assert(!user.isAnonymous);
+
+    return user;
+  }
+
+  Future signOutWithGoogle() async {
+    // Sign out with firebase
+    await _auth.signOut();
+    // Sign out with google
+    await _googleSignIn.signOut();
+  }
+
+  Future<void> pushUserInfo(FirebaseUser user) async {
     return _db.collection('users').document(user.uid).setData({
-      'name': user.displayName,
-      'profilePic': user.photoUrl,
+      'name': user.displayName ?? user.providerData[0].displayName,
+      'profilePic': user.photoUrl ?? user.providerData[0].photoUrl,
       'email': user.email,
       'isAnonymous': false,
       'provider': user.providerId,
+      'userUid': user.uid,
     }, SetOptions.merge);
   }
 }
