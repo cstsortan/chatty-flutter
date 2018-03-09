@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'chat.dart';
-import 'package:chatty/data/services/fir_auth.dart';
 import 'splash_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -24,12 +23,9 @@ class _HomePageState extends State<HomePage> {
               color: Colors.white,
             ),),
             onPressed: () {
-              FirAuth.instance.signOutWithGoogle()
-                .then((_) {
-                  Navigator.pushReplacement(context, new MaterialPageRoute(
+              Navigator.pushReplacement(context, new MaterialPageRoute(
                     builder: (context) => new SplashPage()
                   ));
-                });
             },
           ),
         ],

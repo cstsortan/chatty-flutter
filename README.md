@@ -1,4 +1,4 @@
-# redux
+# Chatty
 
 A new Flutter project.
 

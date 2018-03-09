@@ -1,7 +1,6 @@
 import 'package:built_redux/built_redux.dart';
 import 'package:chatty/actions/actions.dart';
 import 'package:chatty/models/app_state.dart';
-import 'package:chatty/models/email_login_info.dart';
 import 'package:test/test.dart';
 import 'package:chatty/reducers/reducers.dart';
 
