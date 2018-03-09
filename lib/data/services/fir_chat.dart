@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:redux/services/fir_auth.dart';
 
 class FirChat {
   static final FirChat instance = new FirChat._internal();

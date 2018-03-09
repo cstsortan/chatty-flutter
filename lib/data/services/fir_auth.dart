@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:chatty/models/serializers.dart';
+import 'package:chatty/models/user.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -22,7 +24,7 @@ class FirAuth {
 
   Future<FirebaseUser> signInWithGoogle() async {
     FirebaseUser firebaseUser = await _auth.currentUser();
-    if(firebaseUser!=null) return firebaseUser;
+    if (firebaseUser != null) return firebaseUser;
     // Attempt to get the currently authenticated user
     GoogleSignInAccount currentUser = _googleSignIn.currentUser;
     if (currentUser == null) {
@@ -57,14 +59,15 @@ class FirAuth {
     await _googleSignIn.signOut();
   }
 
-  Future<void> pushUserInfo(FirebaseUser user) async {
-    return _db.collection('users').document(user.uid).setData({
-      'name': user.displayName ?? user.providerData[0].displayName,
-      'profilePic': user.photoUrl ?? user.providerData[0].photoUrl,
-      'email': user.email,
-      'isAnonymous': false,
-      'provider': user.providerId,
-      'userUid': user.uid,
-    }, SetOptions.merge);
+  Future<void> pushUserInfo(FirebaseUser firebaseUser) async {
+    User user = new User((b) => b
+      ..email = firebaseUser.email
+      ..isAnonymous = false
+      ..userUid = firebaseUser.uid
+      ..profilePic = firebaseUser.photoUrl
+      ..provider = firebaseUser.providerId);
+    return _db.collection('users')
+        .document(firebaseUser.uid)
+        .setData(serializers.serializeWith(User.serializer, user), SetOptions.merge);
   }
 }
