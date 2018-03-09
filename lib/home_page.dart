@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:redux/chat.dart';
-import 'package:redux/services/fir_auth.dart';
-import 'package:redux/splash_page.dart';
+import 'chat.dart';
+import 'package:chatty/data/services/fir_auth.dart';
+import 'splash_page.dart';
 
 class HomePage extends StatefulWidget {
   final String userUid;

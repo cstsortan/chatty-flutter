@@ -1,14 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:chatty/data/services/fir_chat.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fluro/fluro.dart';
 import 'package:flutter/material.dart';
-import 'package:redux/main.dart';
-import 'package:redux/services/fir_chat.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_sign_in/widgets.dart';
+import 'main.dart';
 
 class Chat extends StatelessWidget {
   final String userUid;
